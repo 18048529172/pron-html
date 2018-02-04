@@ -11,17 +11,12 @@
 
 </head>
 <body class="easyui-layout">
-<div data-options="region:'east',split:true,collapsed:true,title:'East'" style="width:100px;padding:10px;">east region</div>
 <div data-options="region:'center',title:'视频列表'">
 	<form id="ff">
 		<table>
 			<tr>
 				<td>关键字</td>
 				<td><input class="easyui-textbox" type="text" id="keyword" data-options="required:false"></input></td>
-				<td>标题</td>
-				<td><input class="easyui-textbox" type="text" id="title" data-options="required:false"></input></td>
-				<td>内容</td>
-				<td><input class="easyui-textbox" type="text" id="content" data-options="required:false"></input></td>
 				<td>作者</td>
 				<td><input class="easyui-textbox" type="text" id="author" data-options="required:false"></input></td>
 				<td><a href="javascript:void(0)" class="easyui-linkbutton"  id="query">查询</a></td>
@@ -30,62 +25,95 @@
 	</form>
 	<table id="dg"></table>
 	<a download="" href="" target="blank" id="down"></a>
+	<div id="viewDetailWind"></div>
 </div>
 <script>
 
-	function downByUrl( remoteDownUrl,title ){
-        try{
-            var a = document.getElementById("down");
-            a.href=remoteDownUrl;
-            a.download=title;
-            a.click();
-        }catch(e){
-            $.messager.alert('提示','下载失败','error');
-        }
-    }
-
 	 function down(id,title) {
-		 $.get("http://localhost:8081/pron/down/"+id,function(address){
+		 $.get("/pron/down/"+id,function(address){
 		     if(address){
-                 downByUrl(address,title);
+                 try{
+                     var a = document.getElementById("down");
+                     a.href=address;
+                     a.download=title;
+                     a.click();
+                 }catch(e){
+                     $.messager.alert('提示','下载失败','error');
+                 }
 			 }else{
                  $.messager.alert('提示','找不到下载地址','error');
              }
-            /* $("#targetd").empty();
-             $("#targetd").html("<a target=\"_blank\" class=\"easyui-linkbutton\" href=\""+address+"\" download=\"a\">"+title+"</a>");*/
 		 })
      }
+
+     function playVideo( id,title) {
+         $.get("/pron/down/"+id,function(address){
+             if(address){
+                 var openWind = $('#viewDetailWind');
+                 openWind.window({
+                     width:600,
+                     height:400,
+                     minimizable : false,
+                     maximizable : false,
+                     collapsed : false,
+					 title:title,
+                     modal:true,
+                     content:"<iframe frameborder='0' height='100%' width='100%' id='detailPage'></iframe>",
+                     onOpen : function () {
+						 $("#detailPage").attr("src",address);
+                     },
+                     onBeforeOpen:function () {
+                         $("#detailPage").attr("src","");
+                     }
+                 });
+                 openWind.window('open');
+             }else{
+                 $.messager.alert('提示','播放错误','error');
+             }
+         })
+     }
+
+
+     function viewVideo( id ) {
+         var url = "/pron/address/"+id;
+         $.get(url,function(openUrl){
+             window.open(openUrl);
+         });
+     }
+
 
 
 
 
     $(function(){
         $('#dg').datagrid({
-            url:'http://localhost:8081/pron/list',
+            url:'/pron/list',
             columns:[[
-                {field:'id',title:'下载',formatter: function(value,row,index){
-                        var title = row.title;
-
-						return "<a  href='javascript:void(0);' onclick=\"down('"+value+"\','"+title+"');\">获取地址</a>"
+                //名称
+                {field:'title',title:'名称',formatter:function (value,row,index) {
+						//打开视频地址
+                    	return "<a  href='javascript:void(0);' onclick=\"viewVideo('"+row.id+"\');\">"+value+"</a>";
                 	}
                 },
-                {field:'title',title:'名称'},
-                {field:'author',title:'作者'},
+				//作者
+                {field:'author',title:'作者',align : "center"},
+				//下载
+				{field:'id',title:'下载',formatter: function(value,row,index){
+                        var title = row.title;
+						var ops =  "<a  href='javascript:void(0);' class=\"easyui-linkbutton\" onclick=\"down('"+value+"\','"+title+"');\">下载</a>";
+                    	ops = ops + "&nbsp;";
+						ops = ops + "<a  href='javascript:void(0);' class=\"easyui-linkbutton\" onclick=\"playVideo('"+value+"\','"+title+"');\">播放</a>";
+						return ops;
+                	},
+                    align : "center"
+                },
+				//内容
                 {field:'content',title:'内容'}
             ]],
             pagination:true,
             fitColumns:true,
             singleSelect : true,
-            pageSize : 20,
-            onDblClickRow : function(index,row){
-                //双击事件
-				///pron/address/{id}
-				var url = "http://localhost:8081/pron/address/"+row.id;
-				$.get(url,function(openUrl){
-                    window.open(openUrl);
-				})
-
-            }
+            pageSize : 30
         });
         $("#query").click(function () {
             var parm = {};
